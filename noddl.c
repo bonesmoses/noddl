@@ -16,6 +16,8 @@
 
 bool	deny_ddl = false;
 
+ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
+
 PG_MODULE_MAGIC;
 
 static void
@@ -45,16 +47,21 @@ noddl_ProcessUtility(
           errhint("Disable the noddl.enable GUC to continue."))
       );
 
-  /* Since we set the ProcessUtility hook, we need to explicitly call the 
-   * standard ProcessUtility afterwards, or not even allowed SQL statements
-   * would be processed. While highly amusing, that's not the intent of this
-   * extension.
+  /* Any time we don't abort, we need to explicitly call the next registered
+   * ProcessUtility afterwards, or not even allowed SQL statements would be
+   * processed. While highly amusing, that's not the intent of this extension.
    */
 
-  standard_ProcessUtility(
-      pstmt, queryString, readOnlyTree, context, params,
-      queryEnv, dest, qc
-  );
+  if (next_ProcessUtility_hook)
+    next_ProcessUtility_hook(
+        pstmt, queryString, readOnlyTree, context, params,
+        queryEnv, dest, qc
+    );
+  else
+    standard_ProcessUtility(
+        pstmt, queryString, readOnlyTree, context, params,
+        queryEnv, dest, qc
+    );
 
 } // noddl_ProcessUtility
 
@@ -72,6 +79,9 @@ _PG_init(void)
     0,                  // No flags for this GUC
     NULL, NULL, NULL    // No hooks necessary
   );
+
+  if (ProcessUtility_hook)
+    next_ProcessUtility_hook = ProcessUtility_hook;
 
   ProcessUtility_hook = noddl_ProcessUtility;
 
