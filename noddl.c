@@ -16,7 +16,7 @@
 
 bool	deny_ddl = false;
 
-ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
+static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 
 PG_MODULE_MAGIC;
 
